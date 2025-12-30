@@ -62,8 +62,8 @@ export async function actOnTask(request, opts) {
     if (task.status !== 'open') {
         return { ok: false, status: 409, body: { error: `Task is not open (status=${task.status})` } };
     }
-    // Enforce assignment match (admins bypass). This supports scenarios like:
-    // - assignedTo.groups = ['admin'] => any user in admin group can approve
+    // Enforce assignment match (admins bypass). Prefer roles for org-wide approvals, e.g.:
+    // - assignedTo.roles = ['admin'] => any user with the 'admin' role can approve
     if (!isAdmin(user.roles)) {
         const principals = await resolveUserPrincipals({
             request,
