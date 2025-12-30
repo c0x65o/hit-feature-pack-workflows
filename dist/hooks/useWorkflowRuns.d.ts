@@ -1,5 +1,6 @@
 export type WorkflowRunStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'cancelled';
-export type WorkflowTaskStatus = 'pending' | 'approved' | 'denied' | 'completed' | 'cancelled';
+export type WorkflowTaskStatus = 'open' | 'approved' | 'denied' | 'cancelled' | 'expired';
+export type WorkflowTaskType = 'approval' | 'input' | 'review';
 export interface WorkflowRunSummary {
     id: string;
     workflowId: string;
@@ -34,24 +35,28 @@ export interface WorkflowRunDetail {
 export interface WorkflowRunEvent {
     id: string;
     runId: string;
-    eventType: string;
-    payload?: Record<string, unknown> | null;
-    timestamp: string;
-    sequence: number;
+    seq: number;
+    tMs: number;
+    name: string;
+    level: 'info' | 'warn' | 'error' | string;
+    nodeId?: string | null;
+    data?: Record<string, unknown> | null;
+    createdAt: string;
 }
 export interface WorkflowTask {
     id: string;
     runId: string;
     nodeId: string;
-    taskType: 'approval' | 'human_input';
+    type: WorkflowTaskType;
     status: WorkflowTaskStatus;
-    assignedToPrincipalType?: string | null;
-    assignedToPrincipalId?: string | null;
-    metadata?: Record<string, unknown> | null;
-    completedByUserId?: string | null;
-    completedAt?: string | null;
+    assignedTo?: Record<string, unknown>;
+    prompt?: Record<string, unknown> | null;
+    decision?: Record<string, unknown> | null;
+    createdByUserId?: string | null;
+    decidedByUserId?: string | null;
+    decidedAt?: string | null;
+    expiresAt?: string | null;
     createdAt: string;
-    updatedAt?: string | null;
 }
 export declare function useAllWorkflowRuns(opts?: {
     workflowId?: string;
@@ -65,6 +70,7 @@ export declare function useAllWorkflowRuns(opts?: {
 };
 export declare function useWorkflowRun(runId: string | null): {
     run: WorkflowRunDetail | null;
+    tasks: WorkflowTask[];
     loading: boolean;
     error: Error | null;
     refresh: () => Promise<void>;
@@ -80,8 +86,8 @@ export declare function useWorkflowRunTasks(runId: string | null): {
     loading: boolean;
     error: Error | null;
     refresh: () => Promise<void>;
-    approveTask: (taskId: string) => Promise<void>;
-    denyTask: (taskId: string, reason?: string) => Promise<void>;
+    approveTask: (taskId: string, comment?: string) => Promise<void>;
+    denyTask: (taskId: string, comment?: string) => Promise<void>;
 };
 export declare function useMyWorkflowTasks(opts?: {
     includeResolved?: boolean;

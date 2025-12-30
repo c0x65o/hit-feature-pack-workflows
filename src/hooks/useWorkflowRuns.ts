@@ -7,7 +7,8 @@ import { useCallback, useEffect, useState } from 'react';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type WorkflowRunStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'cancelled';
-export type WorkflowTaskStatus = 'pending' | 'approved' | 'denied' | 'completed' | 'cancelled';
+export type WorkflowTaskStatus = 'open' | 'approved' | 'denied' | 'cancelled' | 'expired';
+export type WorkflowTaskType = 'approval' | 'input' | 'review';
 
 export interface WorkflowRunSummary {
   id: string;
@@ -41,25 +42,29 @@ export interface WorkflowRunDetail {
 export interface WorkflowRunEvent {
   id: string;
   runId: string;
-  eventType: string;
-  payload?: Record<string, unknown> | null;
-  timestamp: string;
-  sequence: number;
+  seq: number;
+  tMs: number;
+  name: string;
+  level: 'info' | 'warn' | 'error' | string;
+  nodeId?: string | null;
+  data?: Record<string, unknown> | null;
+  createdAt: string;
 }
 
 export interface WorkflowTask {
   id: string;
   runId: string;
   nodeId: string;
-  taskType: 'approval' | 'human_input';
+  type: WorkflowTaskType;
   status: WorkflowTaskStatus;
-  assignedToPrincipalType?: string | null;
-  assignedToPrincipalId?: string | null;
-  metadata?: Record<string, unknown> | null;
-  completedByUserId?: string | null;
-  completedAt?: string | null;
+  assignedTo?: Record<string, unknown>;
+  prompt?: Record<string, unknown> | null;
+  decision?: Record<string, unknown> | null;
+  createdByUserId?: string | null;
+  decidedByUserId?: string | null;
+  decidedAt?: string | null;
+  expiresAt?: string | null;
   createdAt: string;
-  updatedAt?: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,6 +180,7 @@ export function useAllWorkflowRuns(opts: { workflowId?: string; limit?: number; 
 
 export function useWorkflowRun(runId: string | null) {
   const [run, setRun] = useState<WorkflowRunDetail | null>(null);
+  const [tasks, setTasks] = useState<WorkflowTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -183,8 +189,9 @@ export function useWorkflowRun(runId: string | null) {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchWorkflowApi<{ run: WorkflowRunDetail }>(`/runs/${runId}`);
+      const data = await fetchWorkflowApi<{ run: WorkflowRunDetail; tasks?: WorkflowTask[] }>(`/runs/${runId}`);
       setRun(data?.run ?? null);
+      setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load workflow run'));
     } finally {
@@ -196,7 +203,7 @@ export function useWorkflowRun(runId: string | null) {
     refresh();
   }, [refresh]);
 
-  return { run, loading, error, refresh };
+  return { run, tasks, loading, error, refresh };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,8 +250,8 @@ export function useWorkflowRunTasks(runId: string | null) {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchWorkflowApi<{ tasks: WorkflowTask[] }>(`/runs/${runId}/tasks`);
-      setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
+      const data = await fetchWorkflowApi<{ items: WorkflowTask[] }>(`/runs/${runId}/tasks`);
+      setTasks(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load run tasks'));
     } finally {
@@ -258,20 +265,23 @@ export function useWorkflowRunTasks(runId: string | null) {
 
   // Actions
   const approveTask = useCallback(
-    async (taskId: string) => {
+    async (taskId: string, comment?: string) => {
       if (!runId) return;
-      await fetchWorkflowApi(`/runs/${runId}/tasks/${taskId}/approve`, { method: 'POST' });
+      await fetchWorkflowApi(`/runs/${runId}/tasks/${taskId}/approve`, {
+        method: 'POST',
+        body: JSON.stringify(comment ? { comment } : {}),
+      });
       await refresh();
     },
     [runId, refresh]
   );
 
   const denyTask = useCallback(
-    async (taskId: string, reason?: string) => {
+    async (taskId: string, comment?: string) => {
       if (!runId) return;
       await fetchWorkflowApi(`/runs/${runId}/tasks/${taskId}/deny`, {
         method: 'POST',
-        body: JSON.stringify({ reason }),
+        body: JSON.stringify(comment ? { comment } : {}),
       });
       await refresh();
     },
@@ -296,8 +306,8 @@ export function useMyWorkflowTasks(opts: { includeResolved?: boolean } = {}) {
       setError(null);
       const params = new URLSearchParams();
       if (opts.includeResolved) params.set('includeResolved', 'true');
-      const data = await fetchWorkflowApi<{ tasks: WorkflowTask[] }>(`/tasks?${params.toString()}`);
-      setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
+      const data = await fetchWorkflowApi<{ items: WorkflowTask[] }>(`/tasks?${params.toString()}`);
+      setTasks(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load tasks'));
     } finally {

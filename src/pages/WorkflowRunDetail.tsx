@@ -142,11 +142,9 @@ function EventStep({
   onToggle: () => void;
 }) {
   const { Badge } = useUi();
-  const duration = prevEvent
-    ? new Date(event.timestamp).getTime() - new Date(prevEvent.timestamp).getTime()
-    : null;
-  const variant = getEventVariant(event.eventType);
-  const color = getEventColor(event.eventType);
+  const duration = prevEvent ? event.tMs - prevEvent.tMs : null;
+  const variant = getEventVariant(event.name);
+  const color = getEventColor(event.name);
 
   return (
     <div className="relative">
@@ -164,7 +162,7 @@ function EventStep({
               : 'bg-gray-50 dark:bg-gray-800 border-gray-300 dark:border-gray-600 group-hover:border-gray-400 dark:group-hover:border-gray-500'
           }`}
         >
-          <div className={color}>{getEventIcon(event.eventType)}</div>
+          <div className={color}>{getEventIcon(event.name)}</div>
         </div>
 
         {/* Content */}
@@ -176,7 +174,7 @@ function EventStep({
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant={variant as any}>{formatEventType(event.eventType)}</Badge>
+                <Badge variant={variant as any}>{formatEventType(event.name)}</Badge>
                 {duration !== null && (
                   <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
                     <Clock size={12} />
@@ -184,11 +182,11 @@ function EventStep({
                   </span>
                 )}
                 <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-                  #{event.sequence}
+                  #{event.seq}
                 </span>
               </div>
               <div className="mt-1 text-xs text-gray-500">
-                {formatDateTime(event.timestamp)}
+                {formatDateTime(new Date(event.tMs).toISOString())}
               </div>
             </div>
             <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
@@ -197,13 +195,13 @@ function EventStep({
           </button>
 
           {/* Expanded content */}
-          {isExpanded && event.payload && Object.keys(event.payload).length > 0 && (
+          {isExpanded && event.data && Object.keys(event.data).length > 0 && (
             <div className="mt-3 pl-2 border-l-2 border-gray-200 dark:border-gray-700">
               <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-4">
                 <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-2 text-sm">
                   Event Payload
                 </h4>
-                <JsonBlock value={event.payload} />
+                <JsonBlock value={event.data} />
               </div>
             </div>
           )}
@@ -227,7 +225,7 @@ function TaskCard({
   onDeny: () => void;
 }) {
   const { Card, Button, Badge } = useUi();
-  const isPending = task.status === 'pending';
+  const isPending = task.status === 'open';
 
   return (
     <Card className="border-l-4 border-l-amber-500">
@@ -236,11 +234,15 @@ function TaskCard({
           <div className="flex items-center gap-2 mb-2">
             <User size={16} className="text-amber-500" />
             <span className="font-medium">
-              {task.taskType === 'approval' ? 'Approval Required' : 'Human Input Required'}
+              {task.type === 'approval'
+                ? 'Approval Required'
+                : task.type === 'input'
+                  ? 'Human Input Required'
+                  : 'Review Required'}
             </span>
             <Badge
               variant={
-                task.status === 'pending'
+                task.status === 'open'
                   ? 'warning'
                   : task.status === 'approved'
                   ? 'success'
@@ -257,21 +259,21 @@ function TaskCard({
               <span className="text-gray-500">Node:</span>{' '}
               <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded text-xs">{task.nodeId}</code>
             </div>
-            {task.assignedToPrincipalId && (
+            {task.assignedTo && Object.keys(task.assignedTo).length > 0 && (
               <div>
                 <span className="text-gray-500">Assigned to:</span>{' '}
-                <span className="font-mono text-xs">
-                  {task.assignedToPrincipalType}:{task.assignedToPrincipalId}
-                </span>
+                <code className="font-mono text-xs bg-gray-100 dark:bg-gray-800 px-1 rounded">
+                  {JSON.stringify(task.assignedTo)}
+                </code>
               </div>
             )}
-            {task.metadata && Object.keys(task.metadata).length > 0 && (
+            {task.prompt && Object.keys(task.prompt).length > 0 && (
               <details className="mt-2">
                 <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700">
-                  Show metadata
+                  Show prompt
                 </summary>
                 <div className="mt-2">
-                  <JsonBlock value={task.metadata} />
+                  <JsonBlock value={task.prompt} />
                 </div>
               </details>
             )}
@@ -369,8 +371,8 @@ export function WorkflowRunDetail({ runId, onNavigate }: WorkflowRunDetailProps)
       waits: 0,
     };
     events.forEach((e) => {
-      if (e.eventType.includes('error') || e.eventType.includes('fail')) stats.errors++;
-      if (e.eventType.includes('wait') || e.eventType.includes('pause')) stats.waits++;
+      if (e.name.includes('error') || e.name.includes('fail')) stats.errors++;
+      if (e.name.includes('wait') || e.name.includes('pause') || e.name.includes('waiting')) stats.waits++;
     });
     return stats;
   }, [events]);
@@ -382,7 +384,7 @@ export function WorkflowRunDetail({ runId, onNavigate }: WorkflowRunDetailProps)
     return end - start;
   }, [run]);
 
-  const pendingTasks = tasks.filter((t) => t.status === 'pending');
+  const pendingTasks = tasks.filter((t) => t.status === 'open');
 
   return (
     <Page

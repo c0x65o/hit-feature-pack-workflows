@@ -1,9 +1,36 @@
 import { and, eq, sql } from 'drizzle-orm';
+import { resolveUserPrincipals } from '@hit/acl-utils';
 import { getDb } from '@/lib/db';
 import { workflowRunEvents, workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
 import { publishWorkflowEvent } from '../utils/publish-event';
+function parseAssignedTo(x) {
+    if (!x || typeof x !== 'object')
+        return {};
+    const o = x;
+    return {
+        users: Array.isArray(o.users) ? o.users.map((u) => String(u)).filter(Boolean) : undefined,
+        roles: Array.isArray(o.roles) ? o.roles.map((r) => String(r)).filter(Boolean) : undefined,
+        groups: Array.isArray(o.groups) ? o.groups.map((g) => String(g)).filter(Boolean) : undefined,
+    };
+}
+function matchesAssignment(assignedTo, principals) {
+    const users = assignedTo.users || [];
+    const roles = assignedTo.roles || [];
+    const groups = assignedTo.groups || [];
+    // If nothing specified, treat as unassigned (nobody can act).
+    if (users.length === 0 && roles.length === 0 && groups.length === 0)
+        return false;
+    const userIds = [principals.userId, principals.userEmail].filter(Boolean);
+    if (users.length > 0 && userIds.some((u) => users.includes(u)))
+        return true;
+    if (roles.length > 0 && principals.roles.some((r) => roles.includes(r)))
+        return true;
+    if (groups.length > 0 && principals.groupIds.some((g) => groups.includes(g)))
+        return true;
+    return false;
+}
 export async function actOnTask(request, opts) {
     const { action } = opts;
     const db = getDb();
@@ -34,6 +61,18 @@ export async function actOnTask(request, opts) {
         return { ok: false, status: 404, body: { error: 'Task not found' } };
     if (task.status !== 'open') {
         return { ok: false, status: 409, body: { error: `Task is not open (status=${task.status})` } };
+    }
+    // Enforce assignment match (admins bypass). This supports scenarios like:
+    // - assignedTo.groups = ['admin'] => any user in admin group can approve
+    if (!isAdmin(user.roles)) {
+        const principals = await resolveUserPrincipals({
+            request,
+            user: { sub: user.sub, email: user.email || '', roles: user.roles || [] },
+        });
+        const assignedTo = parseAssignedTo(task.assignedTo);
+        if (!matchesAssignment(assignedTo, principals)) {
+            return { ok: false, status: 403, body: { error: 'Not assigned to this task' } };
+        }
     }
     const body = await request.json().catch(() => ({}));
     const comment = typeof body?.comment === 'string' ? body.comment : null;

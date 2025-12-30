@@ -99,6 +99,7 @@ export function useAllWorkflowRuns(opts = {}) {
 // ─────────────────────────────────────────────────────────────────────────────
 export function useWorkflowRun(runId) {
     const [run, setRun] = useState(null);
+    const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const refresh = useCallback(async () => {
@@ -109,6 +110,7 @@ export function useWorkflowRun(runId) {
             setError(null);
             const data = await fetchWorkflowApi(`/runs/${runId}`);
             setRun(data?.run ?? null);
+            setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
         }
         catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to load workflow run'));
@@ -120,7 +122,7 @@ export function useWorkflowRun(runId) {
     useEffect(() => {
         refresh();
     }, [refresh]);
-    return { run, loading, error, refresh };
+    return { run, tasks, loading, error, refresh };
 }
 // ─────────────────────────────────────────────────────────────────────────────
 // useWorkflowRunEvents - get run event timeline
@@ -164,7 +166,7 @@ export function useWorkflowRunTasks(runId) {
             setLoading(true);
             setError(null);
             const data = await fetchWorkflowApi(`/runs/${runId}/tasks`);
-            setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
+            setTasks(Array.isArray(data?.items) ? data.items : []);
         }
         catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to load run tasks'));
@@ -177,18 +179,21 @@ export function useWorkflowRunTasks(runId) {
         refresh();
     }, [refresh]);
     // Actions
-    const approveTask = useCallback(async (taskId) => {
+    const approveTask = useCallback(async (taskId, comment) => {
         if (!runId)
             return;
-        await fetchWorkflowApi(`/runs/${runId}/tasks/${taskId}/approve`, { method: 'POST' });
+        await fetchWorkflowApi(`/runs/${runId}/tasks/${taskId}/approve`, {
+            method: 'POST',
+            body: JSON.stringify(comment ? { comment } : {}),
+        });
         await refresh();
     }, [runId, refresh]);
-    const denyTask = useCallback(async (taskId, reason) => {
+    const denyTask = useCallback(async (taskId, comment) => {
         if (!runId)
             return;
         await fetchWorkflowApi(`/runs/${runId}/tasks/${taskId}/deny`, {
             method: 'POST',
-            body: JSON.stringify({ reason }),
+            body: JSON.stringify(comment ? { comment } : {}),
         });
         await refresh();
     }, [runId, refresh]);
@@ -209,7 +214,7 @@ export function useMyWorkflowTasks(opts = {}) {
             if (opts.includeResolved)
                 params.set('includeResolved', 'true');
             const data = await fetchWorkflowApi(`/tasks?${params.toString()}`);
-            setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
+            setTasks(Array.isArray(data?.items) ? data.items : []);
         }
         catch (err) {
             setError(err instanceof Error ? err : new Error('Failed to load tasks'));

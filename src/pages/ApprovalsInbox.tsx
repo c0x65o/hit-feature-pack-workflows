@@ -35,7 +35,9 @@ function TaskRow({
   isActioning: boolean;
 }) {
   const { Badge, Button } = useUi();
-  const isPending = task.status === 'pending';
+  const isPending = task.status === 'open';
+  const decidedAtIso = typeof task.decidedAt === 'string' ? task.decidedAt : null;
+  const decidedBy = typeof task.decidedByUserId === 'string' ? task.decidedByUserId : null;
 
   return (
     <div className="flex items-start gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg hover:border-gray-300 dark:hover:border-gray-700 transition-colors">
@@ -66,11 +68,15 @@ function TaskRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="font-medium text-gray-900 dark:text-gray-100">
-            {task.taskType === 'approval' ? 'Approval Request' : 'Human Input Required'}
+            {task.type === 'approval'
+              ? 'Approval Request'
+              : task.type === 'input'
+                ? 'Human Input Required'
+                : 'Review Required'}
           </span>
           <Badge
             variant={
-              task.status === 'pending'
+              task.status === 'open'
                 ? 'warning'
                 : task.status === 'approved'
                 ? 'success'
@@ -96,16 +102,24 @@ function TaskRow({
             <span className="text-gray-400">•</span>
             <span>{formatDateTime(task.createdAt)}</span>
           </div>
+          {!isPending && decidedAtIso && (
+            <div className="text-xs text-gray-500">
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                {decidedBy ? String(decidedBy) : 'Someone'}
+              </span>{' '}
+              {task.status} this {formatRelativeTime(decidedAtIso)} ({formatDateTime(decidedAtIso)})
+            </div>
+          )}
         </div>
 
         {/* Metadata preview */}
-        {task.metadata && Object.keys(task.metadata).length > 0 && (
+        {task.prompt && Object.keys(task.prompt).length > 0 && (
           <details className="mt-2">
             <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
               Show details
             </summary>
             <pre className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded p-2 overflow-auto max-h-32">
-              {JSON.stringify(task.metadata, null, 2)}
+              {JSON.stringify(task.prompt, null, 2)}
             </pre>
           </details>
         )}
@@ -212,7 +226,7 @@ export function ApprovalsInbox({ onNavigate }: ApprovalsInboxProps) {
     }
   };
 
-  const pendingCount = tasks.filter((t) => t.status === 'pending').length;
+  const pendingCount = tasks.filter((t) => t.status === 'open').length;
 
   return (
     <Page

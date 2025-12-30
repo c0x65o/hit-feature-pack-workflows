@@ -28,8 +28,8 @@ nav:
   - id: workflows
     label: Workflows
     icon: Workflow
-    group: main
-    weight: 100
+    group: system
+    weight: 900
     showWhen: authenticated
     children:
       - id: workflows-dashboard
