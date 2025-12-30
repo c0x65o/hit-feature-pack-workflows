@@ -11,18 +11,45 @@ routes:
   - path: /workflows
     page: Dashboard
     roles: []
+  - path: /workflows/runs
+    page: WorkflowRunsList
+    roles: []
+  - path: /workflows/runs/[runId]
+    page: WorkflowRunDetail
+    roles: []
+  - path: /workflows/approvals
+    page: ApprovalsInbox
+    roles: []
 
 # ─────────────────────────────────────────────────────────────────────────────
 # NAVIGATION - Sidebar/topbar items
 # ─────────────────────────────────────────────────────────────────────────────
 nav:
   - id: workflows
-    label: workflows
-    path: /workflows
-    icon: Package
+    label: Workflows
+    icon: Workflow
     group: main
     weight: 100
     showWhen: authenticated
+    children:
+      - id: workflows-dashboard
+        label: Dashboard
+        path: /workflows
+        icon: LayoutDashboard
+        weight: 100
+        showWhen: authenticated
+      - id: workflows-runs
+        label: Runs
+        path: /workflows/runs
+        icon: Activity
+        weight: 110
+        showWhen: authenticated
+      - id: workflows-approvals
+        label: My Approvals
+        path: /workflows/approvals
+        icon: Inbox
+        weight: 120
+        showWhen: authenticated
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SCHEMA - Drizzle ORM table definitions
@@ -34,6 +61,9 @@ schema:
     - workflows
     - workflowVersions
     - workflowAcls
+    - workflowRuns
+    - workflowRunEvents
+    - workflowTasks
     - WORKFLOW_PERMISSIONS
     - WorkflowPermission
     - Workflow
@@ -42,6 +72,12 @@ schema:
     - InsertWorkflowVersion
     - WorkflowAcl
     - InsertWorkflowAcl
+    - WorkflowRun
+    - InsertWorkflowRun
+    - WorkflowRunEvent
+    - InsertWorkflowRunEvent
+    - WorkflowTask
+    - InsertWorkflowTask
 
 # ─────────────────────────────────────────────────────────────────────────────
 # API ROUTES - Backend endpoints
@@ -68,6 +104,40 @@ api:
       methods: [DELETE]
       handler: "@hit/feature-pack-workflows/server/api/workflows-id-acl-id"
       description: "Delete a workflow ACL entry"
+
+    # Runs
+    - path: /api/workflows/[id]/runs
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-workflows/server/api/workflows-id-runs"
+      description: "List runs for a workflow (GET) or start a new run (POST)"
+    - path: /api/workflows/runs/[runId]
+      methods: [GET]
+      handler: "@hit/feature-pack-workflows/server/api/workflow-runs-id"
+      description: "Get run detail"
+    - path: /api/workflows/runs/[runId]/events
+      methods: [GET]
+      handler: "@hit/feature-pack-workflows/server/api/workflow-runs-id-events"
+      description: "Get run event timeline"
+
+    # Tasks (human steps)
+    - path: /api/workflows/runs/[runId]/tasks
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-workflows/server/api/workflow-runs-id-tasks"
+      description: "List tasks for a run (GET) or create a task (POST) (internal/MVP)"
+    - path: /api/workflows/runs/[runId]/tasks/[taskId]/approve
+      methods: [POST]
+      handler: "@hit/feature-pack-workflows/server/api/workflow-runs-id-tasks-id-approve"
+      description: "Approve a task and resume run"
+    - path: /api/workflows/runs/[runId]/tasks/[taskId]/deny
+      methods: [POST]
+      handler: "@hit/feature-pack-workflows/server/api/workflow-runs-id-tasks-id-deny"
+      description: "Deny a task and resume run"
+
+    # Global task inbox (for notification feeds / approvals)
+    - path: /api/workflows/tasks
+      methods: [GET]
+      handler: "@hit/feature-pack-workflows/server/api/workflows-tasks"
+      description: "List workflow tasks assigned to the current user (open + optionally recently resolved)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DEPENDENCIES

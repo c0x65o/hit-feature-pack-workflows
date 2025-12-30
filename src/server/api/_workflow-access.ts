@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { resolveUserPrincipals } from '@hit/acl-utils';
 
 import { extractUserFromRequest } from '../auth';
-import { workflowAcls, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
+import { workflowAcls, workflowRuns, workflows, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 import { getDb } from '@/lib/db';
 
 export function isAdmin(roles: string[] | undefined | null): boolean {
@@ -82,6 +82,23 @@ export async function hasWorkflowAclAccess(
     .limit(1);
 
   return rows.length > 0;
+}
+
+export async function getWorkflowIdForRun(
+  db: ReturnType<typeof getDb>,
+  runId: string
+): Promise<string | null> {
+  const [run] = await db
+    .select({ workflowId: workflowRuns.workflowId })
+    .from(workflowRuns)
+    .where(eq(workflowRuns.id, runId))
+    .limit(1);
+  return run?.workflowId ? String(run.workflowId) : null;
+}
+
+export async function workflowExists(db: ReturnType<typeof getDb>, workflowId: string): Promise<boolean> {
+  const [wf] = await db.select({ id: workflows.id }).from(workflows).where(eq(workflows.id, workflowId)).limit(1);
+  return Boolean(wf?.id);
 }
 
 export const DEFAULT_CREATOR_PERMISSIONS: string[] = [

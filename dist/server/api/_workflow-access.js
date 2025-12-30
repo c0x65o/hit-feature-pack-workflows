@@ -1,7 +1,7 @@
 import { sql, and, eq, inArray, or } from 'drizzle-orm';
 import { resolveUserPrincipals } from '@hit/acl-utils';
 import { extractUserFromRequest } from '../auth';
-import { workflowAcls, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
+import { workflowAcls, workflowRuns, workflows, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 export function isAdmin(roles) {
     const rs = roles || [];
     return rs.includes('admin') || rs.includes('Admin');
@@ -64,6 +64,18 @@ export async function hasWorkflowAclAccess(db, workflowId, request, requiredPerm
         .where(and(eq(workflowAcls.workflowId, workflowId), or(...conds), sql `${workflowAcls.permissions}::jsonb @> ${JSON.stringify([requiredPermission])}::jsonb`))
         .limit(1);
     return rows.length > 0;
+}
+export async function getWorkflowIdForRun(db, runId) {
+    const [run] = await db
+        .select({ workflowId: workflowRuns.workflowId })
+        .from(workflowRuns)
+        .where(eq(workflowRuns.id, runId))
+        .limit(1);
+    return run?.workflowId ? String(run.workflowId) : null;
+}
+export async function workflowExists(db, workflowId) {
+    const [wf] = await db.select({ id: workflows.id }).from(workflows).where(eq(workflows.id, workflowId)).limit(1);
+    return Boolean(wf?.id);
 }
 export const DEFAULT_CREATOR_PERMISSIONS = [
     WORKFLOW_PERMISSIONS.WORKFLOWS_VIEW,
