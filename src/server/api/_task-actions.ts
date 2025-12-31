@@ -156,7 +156,9 @@ export async function actOnTask(
   const nowMs = Date.now();
   const newStatus = action === 'approve' ? 'approved' : 'denied';
 
-  await db
+  // Atomic update: only one approver should win for group/role fan-out tasks.
+  // If another actor already decided, this will update 0 rows and we return 409.
+  const [updated] = await db
     .update(workflowTasks)
     .set({
       status: newStatus,
@@ -164,7 +166,11 @@ export async function actOnTask(
       decidedByUserId: user.sub,
       decidedAt,
     })
-    .where(eq(workflowTasks.id, taskId));
+    .where(and(eq(workflowTasks.id, taskId), eq(workflowTasks.status, 'open')))
+    .returning();
+  if (!updated) {
+    return { ok: false, status: 409, body: { error: 'Task was already decided by someone else' } };
+  }
 
   // Apply (optional): if this task carries an applyAction, run it on approve.
   // This is how lifecycle gates become "real workflows": approve -> apply the mutation.
