@@ -1,1 +1,0 @@
-{"version":3,"file":"workflows.d.ts","sourceRoot":"","sources":["../../../src/server/api/workflows.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,YAAY,EAAE,MAAM,aAAa,CAAC;AAQxD,eAAO,MAAM,OAAO,kBAAkB,CAAC;AACvC,eAAO,MAAM,OAAO,WAAW,CAAC;AAUhC;;;;;;;;GAQG;AACH,wBAAsB,GAAG,CAAC,OAAO,EAAE,WAAW;;;;;;;;;;IA8G7C;AAED;;;;;;;GAOG;AACH,wBAAsB,IAAI,CAAC,OAAO,EAAE,WAAW,8BAkD9C"}

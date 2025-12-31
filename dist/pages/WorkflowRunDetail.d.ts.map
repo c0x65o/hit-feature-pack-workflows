@@ -1,1 +1,0 @@
-{"version":3,"file":"WorkflowRunDetail.d.ts","sourceRoot":"","sources":["../../src/pages/WorkflowRunDetail.tsx"],"names":[],"mappings":"AA+BA,UAAU,sBAAsB;IAC9B,KAAK,EAAE,MAAM,CAAC;IACd,UAAU,CAAC,EAAE,CAAC,IAAI,EAAE,MAAM,KAAK,IAAI,CAAC;CACrC;AA4QD,wBAAgB,iBAAiB,CAAC,EAAE,KAAK,EAAE,UAAU,EAAE,EAAE,sBAAsB,2CAsQ9E;AAED,eAAe,iBAAiB,CAAC"}
