@@ -8,7 +8,7 @@ function safeKey(id) {
     // We cannot include raw emails (contains @) or other punctuation reliably.
     return encodeURIComponent(String(id || '').trim()).replace(/%/g, '_');
 }
-export async function publishWorkflowEvent(eventType, payload) {
+async function publishRawEvent(eventType, payload) {
     const eventsUrl = process.env.HIT_EVENTS_URL || process.env.NEXT_PUBLIC_HIT_EVENTS_URL;
     if (!eventsUrl) {
         // Events module not configured; best-effort no-op.
@@ -35,6 +35,9 @@ export async function publishWorkflowEvent(eventType, payload) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
 }
+export async function publishWorkflowEvent(eventType, payload) {
+    return await publishRawEvent(eventType, payload);
+}
 /**
  * Publish a workflow notification event to principal-scoped "inbox" channels.
  *
@@ -60,6 +63,7 @@ export async function publishWorkflowInboxEvent(event, payload, targets) {
         uniq.add(key);
         const seg = safeKey(t.type === 'role' ? id.toLowerCase() : id);
         const eventType = `workflows.inbox.${t.type}.${seg}.${event.kind}`;
-        publishWorkflowEvent(eventType, payload).catch(() => { });
+        // Fire-and-forget best effort; callers already treat publish as best effort.
+        publishRawEvent(eventType, payload).catch(() => { });
     }
 }

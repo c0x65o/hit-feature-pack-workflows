@@ -15,7 +15,7 @@ function safeKey(id: string): string {
   return encodeURIComponent(String(id || '').trim()).replace(/%/g, '_');
 }
 
-export async function publishWorkflowEvent(
+async function publishRawEvent(
   eventType: string,
   payload: Record<string, unknown>
 ): Promise<{ success: boolean; subscribers?: number; error?: string }> {
@@ -47,6 +47,13 @@ export async function publishWorkflowEvent(
   }
 }
 
+export async function publishWorkflowEvent(
+  eventType: string,
+  payload: Record<string, unknown>
+): Promise<{ success: boolean; subscribers?: number; error?: string }> {
+  return await publishRawEvent(eventType, payload);
+}
+
 /**
  * Publish a workflow notification event to principal-scoped "inbox" channels.
  *
@@ -74,6 +81,7 @@ export async function publishWorkflowInboxEvent(
 
     const seg = safeKey(t.type === 'role' ? id.toLowerCase() : id);
     const eventType = `workflows.inbox.${t.type}.${seg}.${event.kind}`;
-    publishWorkflowEvent(eventType, payload).catch(() => {});
+    // Fire-and-forget best effort; callers already treat publish as best effort.
+    publishRawEvent(eventType, payload).catch(() => {});
   }
 }
