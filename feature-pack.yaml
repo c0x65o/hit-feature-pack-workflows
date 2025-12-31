@@ -14,6 +14,9 @@ routes:
   - path: /workflows/runs/[runId]
     page: WorkflowRunDetail
     roles: [admin]
+  - path: /workflows/gates
+    page: WorkflowGates
+    roles: [admin]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # NAVIGATION - Sidebar/topbar items
@@ -27,6 +30,21 @@ nav:
     weight: 900
     showWhen: authenticated
     roles: [admin]
+    children:
+      - id: workflows-runs
+        label: Runs
+        path: /workflows/runs
+        icon: Activity
+        weight: 100
+        showWhen: authenticated
+        roles: [admin]
+      - id: workflows-gates
+        label: Gates
+        path: /workflows/gates
+        icon: Settings
+        weight: 110
+        showWhen: authenticated
+        roles: [admin]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SCHEMA - Drizzle ORM table definitions
@@ -115,6 +133,12 @@ api:
       methods: [GET]
       handler: "@hit/feature-pack-workflows/server/api/workflows-tasks"
       description: "List workflow tasks assigned to the current user (open + optionally recently resolved)"
+
+    # Gate config (system-level lifecycle gatekeeper configuration)
+    - path: /api/workflows/gates/crm-convert-prospect
+      methods: [GET, PUT]
+      handler: "@hit/feature-pack-workflows/server/api/workflow-gates-crm-convert-prospect"
+      description: "Get or update the gatekeeper ACL for CRM prospect->company conversion"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DEPENDENCIES

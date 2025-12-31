@@ -6,7 +6,7 @@ import { getDb } from '@/lib/db';
 import { workflowRunEvents, workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
-import { publishWorkflowEvent } from '../utils/publish-event';
+import { publishWorkflowEvent, publishWorkflowInboxEvent } from '../utils/publish-event';
 
 type ApplyAction = {
   kind?: 'api';
@@ -86,6 +86,17 @@ function matchesAssignment(
   if (roles.length > 0 && principals.roles.some((r) => roles.includes(r))) return true;
   if (groups.length > 0 && principals.groupIds.some((g) => groups.includes(g))) return true;
   return false;
+}
+
+function toTargets(assignedTo: any): Array<{ type: 'user' | 'group' | 'role'; id: string }> {
+  const roles = Array.isArray(assignedTo?.roles) ? assignedTo.roles : [];
+  const users = Array.isArray(assignedTo?.users) ? assignedTo.users : [];
+  const groups = Array.isArray(assignedTo?.groups) ? assignedTo.groups : [];
+  return [
+    ...roles.map((id: any) => ({ type: 'role' as const, id: String(id) })),
+    ...groups.map((id: any) => ({ type: 'group' as const, id: String(id) })),
+    ...users.map((id: any) => ({ type: 'user' as const, id: String(id) })),
+  ].filter((t) => t.id && t.id.trim());
 }
 
 export async function actOnTask(
@@ -247,7 +258,7 @@ export async function actOnTask(
   ]);
 
   // Best-effort real-time update so inboxes refresh immediately
-  publishWorkflowEvent('workflows.task.updated', {
+  const updatePayload = {
     runId,
     taskId,
     workflowId,
@@ -256,7 +267,28 @@ export async function actOnTask(
     decidedAt: decidedAt.toISOString(),
     decidedByUserId: user.sub,
     comment: comment || undefined,
-  }).catch(() => {});
+    assignedTo: (task as any).assignedTo || undefined,
+  };
+
+  publishWorkflowEvent('workflows.task.updated', updatePayload).catch(() => {});
+  publishWorkflowInboxEvent(
+    { kind: 'task.updated' },
+    {
+      task: {
+        id: taskId,
+        runId,
+        status: newStatus,
+        type: (task as any).type,
+        nodeId: (task as any).nodeId,
+        assignedTo: (task as any).assignedTo,
+        prompt: (task as any).prompt,
+        decision: { action: newStatus, comment: comment || undefined },
+        decidedAt: decidedAt.toISOString(),
+        decidedByUserId: user.sub,
+      },
+    },
+    toTargets((task as any).assignedTo || {})
+  ).catch(() => {});
 
   return {
     ok: true,

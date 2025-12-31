@@ -10,7 +10,18 @@ import {
 } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
-import { publishWorkflowEvent } from '../utils/publish-event';
+import { publishWorkflowEvent, publishWorkflowInboxEvent } from '../utils/publish-event';
+
+function toTargets(assignedTo: any): Array<{ type: 'user' | 'group' | 'role'; id: string }> {
+  const roles = Array.isArray(assignedTo?.roles) ? assignedTo.roles : [];
+  const users = Array.isArray(assignedTo?.users) ? assignedTo.users : [];
+  const groups = Array.isArray(assignedTo?.groups) ? assignedTo.groups : [];
+  return [
+    ...roles.map((id: any) => ({ type: 'role' as const, id: String(id) })),
+    ...groups.map((id: any) => ({ type: 'group' as const, id: String(id) })),
+    ...users.map((id: any) => ({ type: 'user' as const, id: String(id) })),
+  ].filter((t) => t.id && t.id.trim());
+}
 
 function extractRunId(request: NextRequest): string | null {
   const url = new URL(request.url);
@@ -136,8 +147,8 @@ export async function POST(request: NextRequest) {
       },
     ]);
 
-    // Best-effort real-time notification for inboxes
-    publishWorkflowEvent('workflows.task.created', {
+    // Best-effort real-time notification (global + targeted inbox channels)
+    const evtPayload = {
       runId,
       taskId: task.id,
       workflowId,
@@ -147,7 +158,15 @@ export async function POST(request: NextRequest) {
       assignedTo,
       createdAt: task.createdAt,
       createdByUserId: user.sub,
-    }).catch(() => {});
+      // Include enough for clients to render without a follow-up fetch
+      prompt: task.prompt || undefined,
+      decision: task.decision || undefined,
+      decidedAt: task.decidedAt || undefined,
+      decidedByUserId: task.decidedByUserId || undefined,
+    };
+
+    publishWorkflowEvent('workflows.task.created', evtPayload).catch(() => {});
+    publishWorkflowInboxEvent({ kind: 'task.created' }, { task: { id: task.id, runId, status: 'open', type, nodeId, assignedTo, prompt: task.prompt, createdAt: task.createdAt, decidedAt: task.decidedAt, decidedByUserId: task.decidedByUserId, decision: task.decision } }, toTargets(assignedTo)).catch(() => {});
 
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

@@ -4,7 +4,7 @@ import { extractUserFromRequest } from '../auth';
 import { workflowAcls, workflowRuns, workflows, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 export function isAdmin(roles) {
     const rs = roles || [];
-    return rs.includes('admin') || rs.includes('Admin');
+    return rs.some((r) => String(r || '').toLowerCase() === 'admin');
 }
 export async function getRequestUserOrThrow(request) {
     const user = extractUserFromRequest(request);

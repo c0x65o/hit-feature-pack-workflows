@@ -3,6 +3,11 @@
  *
  * Publishes workflow task events to the HIT Events Module for real-time WebSocket delivery.
  */
+function safeKey(id) {
+    // Event types use dot-separated segments; keep them URL-safe.
+    // We cannot include raw emails (contains @) or other punctuation reliably.
+    return encodeURIComponent(String(id || '').trim()).replace(/%/g, '_');
+}
 export async function publishWorkflowEvent(eventType, payload) {
     const eventsUrl = process.env.HIT_EVENTS_URL || process.env.NEXT_PUBLIC_HIT_EVENTS_URL;
     if (!eventsUrl) {
@@ -28,5 +33,33 @@ export async function publishWorkflowEvent(eventType, payload) {
     }
     catch (error) {
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+}
+/**
+ * Publish a workflow notification event to principal-scoped "inbox" channels.
+ *
+ * This enables true push notifications (no polling) while still using the
+ * existing events gateway / Redis pubsub infrastructure.
+ *
+ * Event types:
+ * - workflows.inbox.role.{role}.task.{created|updated}
+ * - workflows.inbox.group.{groupId}.task.{created|updated}
+ * - workflows.inbox.user.{userIdOrEmail}.task.{created|updated}
+ */
+export async function publishWorkflowInboxEvent(event, payload, targets) {
+    const uniq = new Set();
+    for (const t of targets || []) {
+        if (!t?.type || !t?.id)
+            continue;
+        const id = String(t.id || '').trim();
+        if (!id)
+            continue;
+        const key = `${t.type}:${id}`;
+        if (uniq.has(key))
+            continue;
+        uniq.add(key);
+        const seg = safeKey(t.type === 'role' ? id.toLowerCase() : id);
+        const eventType = `workflows.inbox.${t.type}.${seg}.${event.kind}`;
+        publishWorkflowEvent(eventType, payload).catch(() => { });
     }
 }

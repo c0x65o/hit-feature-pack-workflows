@@ -8,7 +8,7 @@ import { getDb } from '@/lib/db';
 
 export function isAdmin(roles: string[] | undefined | null): boolean {
   const rs = roles || [];
-  return rs.includes('admin') || rs.includes('Admin');
+  return rs.some((r) => String(r || '').toLowerCase() === 'admin');
 }
 
 export async function getRequestUserOrThrow(request: NextRequest) {

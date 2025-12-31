@@ -4,7 +4,7 @@ import { getDb } from '@/lib/db';
 import { workflowRunEvents, workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
-import { publishWorkflowEvent } from '../utils/publish-event';
+import { publishWorkflowEvent, publishWorkflowInboxEvent } from '../utils/publish-event';
 function parseApplyAction(task) {
     const prompt = task?.prompt && typeof task.prompt === 'object' ? task.prompt : null;
     const apply = prompt && typeof prompt.applyAction === 'object' ? prompt.applyAction : null;
@@ -67,6 +67,16 @@ function matchesAssignment(assignedTo, principals) {
     if (groups.length > 0 && principals.groupIds.some((g) => groups.includes(g)))
         return true;
     return false;
+}
+function toTargets(assignedTo) {
+    const roles = Array.isArray(assignedTo?.roles) ? assignedTo.roles : [];
+    const users = Array.isArray(assignedTo?.users) ? assignedTo.users : [];
+    const groups = Array.isArray(assignedTo?.groups) ? assignedTo.groups : [];
+    return [
+        ...roles.map((id) => ({ type: 'role', id: String(id) })),
+        ...groups.map((id) => ({ type: 'group', id: String(id) })),
+        ...users.map((id) => ({ type: 'user', id: String(id) })),
+    ].filter((t) => t.id && t.id.trim());
 }
 export async function actOnTask(request, opts) {
     const { action } = opts;
@@ -211,7 +221,7 @@ export async function actOnTask(request, opts) {
             : []),
     ]);
     // Best-effort real-time update so inboxes refresh immediately
-    publishWorkflowEvent('workflows.task.updated', {
+    const updatePayload = {
         runId,
         taskId,
         workflowId,
@@ -220,7 +230,23 @@ export async function actOnTask(request, opts) {
         decidedAt: decidedAt.toISOString(),
         decidedByUserId: user.sub,
         comment: comment || undefined,
-    }).catch(() => { });
+        assignedTo: task.assignedTo || undefined,
+    };
+    publishWorkflowEvent('workflows.task.updated', updatePayload).catch(() => { });
+    publishWorkflowInboxEvent({ kind: 'task.updated' }, {
+        task: {
+            id: taskId,
+            runId,
+            status: newStatus,
+            type: task.type,
+            nodeId: task.nodeId,
+            assignedTo: task.assignedTo,
+            prompt: task.prompt,
+            decision: { action: newStatus, comment: comment || undefined },
+            decidedAt: decidedAt.toISOString(),
+            decidedByUserId: user.sub,
+        },
+    }, toTargets(task.assignedTo || {})).catch(() => { });
     return {
         ok: true,
         status: 200,
