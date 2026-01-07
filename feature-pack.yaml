@@ -1,8 +1,8 @@
-# Feature Pack: workflows
+# Feature Pack: workflow-core
 # A HIT feature pack
 
-name: workflows
-description: A HIT feature pack
+name: workflow-core
+description: Workflow core feature pack
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ROUTES - Frontend page routes

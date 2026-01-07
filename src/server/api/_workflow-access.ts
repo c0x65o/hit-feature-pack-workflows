@@ -1,6 +1,6 @@
 import { sql, and, eq, inArray, or } from 'drizzle-orm';
 import type { NextRequest } from 'next/server';
-import { resolveUserPrincipals } from '@hit/acl-utils';
+import { resolveUserPrincipals } from '@/lib/acl-utils';
 
 import { extractUserFromRequest } from '../auth';
 import { workflowAcls, workflowRuns, workflows, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';

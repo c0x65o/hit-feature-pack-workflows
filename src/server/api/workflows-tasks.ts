@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { and, desc, eq, gt, inArray, or } from 'drizzle-orm';
-import { resolveUserPrincipals } from '@hit/acl-utils';
+import { resolveUserPrincipals } from '@/lib/acl-utils';
 
 import { getDb } from '@/lib/db';
 import { workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
