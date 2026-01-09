@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useUi } from '@hit/ui-kit';
-import { useServerDataTableState } from '@hit/ui-kit';
+import { useServerDataTableState } from '@hit/ui-kit/hooks/useServerDataTableState';
 import { formatDateTime, formatRelativeTime } from '@hit/sdk';
 import { Activity, RefreshCw, Play, Clock, CheckCircle2, XCircle, Pause } from 'lucide-react';
 import type { WorkflowRunStatus } from '../hooks/useWorkflowRuns';

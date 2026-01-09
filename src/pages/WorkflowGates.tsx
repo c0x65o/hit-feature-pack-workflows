@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useUi } from '@hit/ui-kit';
-import { AclPicker, type AclEntry, type AclPickerConfig } from '@hit/ui-kit';
+import type { AclEntry, AclPickerConfig } from '@hit/ui-kit';
+import { AclPicker } from '@hit/ui-kit/components/AclPicker';
 import { createFetchPrincipals } from '@hit/feature-pack-auth-core';
 import { Workflow } from 'lucide-react';
 

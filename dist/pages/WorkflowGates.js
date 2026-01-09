@@ -2,7 +2,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useEffect, useMemo, useState } from 'react';
 import { useUi } from '@hit/ui-kit';
-import { AclPicker } from '@hit/ui-kit';
+import { AclPicker } from '@hit/ui-kit/components/AclPicker';
 import { createFetchPrincipals } from '@hit/feature-pack-auth-core';
 import { Workflow } from 'lucide-react';
 async function fetchJson(url, init) {
