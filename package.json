@@ -1,6 +1,6 @@
 {
   "name": "@hit/feature-pack-workflow-core",
-  "version": "1.0.37",
+  "version": "1.0.38",
   "description": "A HIT feature pack",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -54,6 +54,14 @@
     "lucide-react": "^0.460.0",
     "next": "15.5.9",
     "react": "19.2.3"
+  },
+  "peerDependenciesMeta": {
+    "@hit/sdk": {
+      "optional": true
+    },
+    "@hit/ui-kit": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@hit/feature-pack-stubs": "file:../../../packages/hit-feature-pack-stubs",
