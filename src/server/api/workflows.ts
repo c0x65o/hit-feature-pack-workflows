@@ -4,7 +4,9 @@ import { asc, desc, eq, inArray, like, or, sql, type AnyColumn, and } from 'driz
 import { getDb } from '@/lib/db';
 import { workflows, workflowAcls, workflowVersions } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
-import { DEFAULT_CREATOR_PERMISSIONS, isAdmin, getPrincipals } from './_workflow-access';
+import { DEFAULT_CREATOR_PERMISSIONS } from './_workflow-access';
+import { resolveWorkflowCoreScopeMode } from '../lib/scope-mode';
+import { checkWorkflowCoreAction } from '../lib/require-action';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,11 +22,11 @@ function slugify(input: string): string {
 /**
  * GET /api/workflows
  *
- * Admin:
- * - can list all workflows
- *
- * Non-admin:
- * - lists workflows where the user has any ACL entry granting at least one permission.
+ * Lists workflows based on scope mode:
+ * - none: deny all access (return empty)
+ * - own: only workflows owned by current user
+ * - ldd: workflows owned by current user (workflows don't have LDD fields yet, so behaves like own)
+ * - any: all workflows
  */
 export async function GET(request: NextRequest) {
   try {
@@ -56,68 +58,31 @@ export async function GET(request: NextRequest) {
       conditions.push(or(like(workflows.name, `%${search}%`), like(workflows.slug, `%${search}%`))!);
     }
 
-    // Admin: no ACL filter.
-    if (isAdmin(user.roles)) {
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-      const [countResult] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(workflows)
-        .where(whereClause);
-      const total = Number(countResult?.count || 0);
-
-      const items = await db
-        .select()
-        .from(workflows)
-        .where(whereClause)
-        .orderBy(orderDirection)
-        .limit(pageSize)
-        .offset(offset);
-
+    // Apply scope-based filtering (explicit branching on none/own/ldd/any)
+    const mode = await resolveWorkflowCoreScopeMode(request, { entity: 'workflows', verb: 'read' });
+    
+    if (mode === 'none') {
+      // Explicit deny: return empty results (fail-closed but non-breaking for list UI)
       return NextResponse.json({
-        items,
-        pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
+        items: [],
+        pagination: { page, pageSize, total: 0, totalPages: 0 },
       });
+    } else if (mode === 'own') {
+      // Only show workflows owned by the current user
+      conditions.push(eq(workflows.ownerUserId, user.sub));
+    } else if (mode === 'ldd') {
+      // Workflows don't have LDD fields yet, so ldd behaves like own
+      conditions.push(eq(workflows.ownerUserId, user.sub));
+    } else if (mode === 'any') {
+      // No scoping - show all workflows
     }
 
-    // Non-admin: list workflows where user has *any* ACL entry.
-    const principals = await getPrincipals(request, user);
-    const userIds: string[] = [];
-    if (principals.userId) userIds.push(principals.userId);
-    if (principals.userEmail) userIds.push(principals.userEmail);
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const aclConds = [];
-    if (userIds.length > 0) {
-      aclConds.push(and(eq(workflowAcls.principalType, 'user'), inArray(workflowAcls.principalId, userIds)));
-    }
-    if (principals.roles.length > 0) {
-      aclConds.push(and(eq(workflowAcls.principalType, 'role'), inArray(workflowAcls.principalId, principals.roles)));
-    }
-    if (principals.groupIds.length > 0) {
-      aclConds.push(and(eq(workflowAcls.principalType, 'group'), inArray(workflowAcls.principalId, principals.groupIds)));
-    }
-
-    if (aclConds.length === 0) {
-      return NextResponse.json({ items: [], pagination: { page, pageSize, total: 0, totalPages: 0 } });
-    }
-
-    const allowed = await db
-      .select({ workflowId: workflowAcls.workflowId })
-      .from(workflowAcls)
-      .where(or(...aclConds)!)
-      .groupBy(workflowAcls.workflowId);
-
-    const allowedIds = allowed.map((r: any) => String(r.workflowId)).filter(Boolean);
-    if (allowedIds.length === 0) {
-      return NextResponse.json({ items: [], pagination: { page, pageSize, total: 0, totalPages: 0 } });
-    }
-
-    const whereClause = and(
-      inArray(workflows.id, allowedIds),
-      ...(conditions.length > 0 ? [and(...conditions)] : [])
-    );
-
-    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(workflows).where(whereClause);
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(workflows)
+      .where(whereClause);
     const total = Number(countResult?.count || 0);
 
     const items = await db
@@ -145,6 +110,8 @@ export async function GET(request: NextRequest) {
  * - workflows row
  * - initial draft version (v1)
  * - creator ACL entry (full permissions) to keep default-closed behavior
+ *
+ * Requires workflow-core.workflows.create permission.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -152,6 +119,12 @@ export async function POST(request: NextRequest) {
     const user = extractUserFromRequest(request);
     if (!user?.sub) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check create permission
+    const createCheck = await checkWorkflowCoreAction(request, 'workflow-core.workflows.create');
+    if (!createCheck.ok) {
+      return NextResponse.json({ error: 'Not authorized to create workflows' }, { status: 403 });
     }
 
     const body = await request.json().catch(() => ({}));

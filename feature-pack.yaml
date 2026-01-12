@@ -11,10 +11,14 @@ description: Workflow core feature pack
 routes:
   - path: /workflows/runs
     page: WorkflowRunsList
-    roles: [admin]
+    roles: []
+    default_roles_allow: [admin]
+    authz: { entity: workflows, verb: read }
   - path: /workflows/runs/[runId]
     page: WorkflowRunDetail
-    roles: [admin]
+    roles: []
+    default_roles_allow: [admin]
+    authz: { entity: workflows, verb: read }
   - path: /workflows/gates
     page: WorkflowGates
     roles: [admin]
@@ -140,6 +144,94 @@ api:
       methods: [GET, PUT]
       handler: "@hit/feature-pack-workflow-core/server/api/workflow-gates-crm-convert-prospect"
       description: "Get or update the gatekeeper ACL for CRM prospect->company conversion"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PERMISSIONS - Action definitions (for admin-core permissions UI + runtime checks)
+# ─────────────────────────────────────────────────────────────────────────────
+permissions:
+  actions:
+    # Scope Policy Tree: workflow-core (global) -> entity overrides.
+    #
+    # Scope modes:
+    # - none: deny all access for this verb/entity (hide pages + block APIs)
+    # - any: ignore scope (read everything)
+    # - own: only owned records (workflow.ownerUserId === current user sub)
+    # - ldd: owner OR matching L/D/D (workflows don't have LDD fields yet, so ldd behaves like own)
+    #
+    # These are mutually exclusive per node; the Security Groups UI renders them as dropdowns.
+    - key: workflow-core.read.scope.none
+      label: "Workflow-Core Read Scope = None"
+      description: "Deny all workflow read access."
+      default_enabled: false
+    - key: workflow-core.read.scope.any
+      label: "Workflow-Core Read Scope = Any"
+      description: "Read all workflows regardless of ownership."
+      default_enabled: false
+    - key: workflow-core.read.scope.own
+      label: "Workflow-Core Read Scope = Own"
+      description: "Read only workflows you own."
+      default_enabled: false
+    - key: workflow-core.read.scope.ldd
+      label: "Workflow-Core Read Scope = LDD"
+      description: "Read workflows you own, or that match your L/D/D scope (currently behaves like own)."
+      default_enabled: false
+
+    - key: workflow-core.write.scope.none
+      label: "Workflow-Core Write Scope = None"
+      description: "Deny all workflow write access."
+      default_enabled: false
+    - key: workflow-core.write.scope.any
+      label: "Workflow-Core Write Scope = Any"
+      description: "Edit workflows regardless of ownership."
+      default_enabled: false
+    - key: workflow-core.write.scope.own
+      label: "Workflow-Core Write Scope = Own"
+      description: "Edit only workflows you own."
+      default_enabled: false
+    - key: workflow-core.write.scope.ldd
+      label: "Workflow-Core Write Scope = LDD"
+      description: "Edit workflows you own, or that match your L/D/D scope (currently behaves like own)."
+      default_enabled: false
+
+    # Workflows override (optional): if set, overrides workflow-core.read.scope.* for workflows only.
+    - key: workflow-core.workflows.read.scope.none
+      label: "Workflow-Core Workflows Read Scope = None"
+      description: "Deny all workflow read access."
+      default_enabled: false
+    - key: workflow-core.workflows.read.scope.any
+      label: "Workflow-Core Workflows Read Scope = Any"
+      description: "Read workflows regardless of ownership."
+      default_enabled: false
+    - key: workflow-core.workflows.read.scope.own
+      label: "Workflow-Core Workflows Read Scope = Own"
+      description: "Read only workflows you own."
+      default_enabled: false
+    - key: workflow-core.workflows.read.scope.ldd
+      label: "Workflow-Core Workflows Read Scope = LDD"
+      description: "Read workflows you own, or that match your L/D/D scope (currently behaves like own)."
+      default_enabled: false
+
+    - key: workflow-core.workflows.write.scope.none
+      label: "Workflow-Core Workflows Write Scope = None"
+      description: "Deny all workflow write access."
+      default_enabled: false
+    - key: workflow-core.workflows.write.scope.any
+      label: "Workflow-Core Workflows Write Scope = Any"
+      description: "Edit workflows regardless of ownership."
+      default_enabled: false
+    - key: workflow-core.workflows.write.scope.own
+      label: "Workflow-Core Workflows Write Scope = Own"
+      description: "Edit only workflows you own."
+      default_enabled: false
+    - key: workflow-core.workflows.write.scope.ldd
+      label: "Workflow-Core Workflows Write Scope = LDD"
+      description: "Edit workflows you own, or that match your L/D/D scope (currently behaves like own)."
+      default_enabled: false
+
+    - key: workflow-core.workflows.create
+      label: Create Workflow
+      description: "Create a new workflow."
+      default_enabled: false
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DEPENDENCIES

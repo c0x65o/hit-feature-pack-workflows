@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { workflowRuns, workflowVersions, WORKFLOW_PERMISSIONS, workflowRunEvents, } from '@/lib/feature-pack-schemas';
+import { workflowRuns, workflowVersions, workflowRunEvents, workflows, } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
-import { hasWorkflowAclAccess, isAdmin, workflowExists } from './_workflow-access';
+import { resolveWorkflowCoreScopeMode } from '../lib/scope-mode';
 function extractWorkflowId(request) {
     const url = new URL(request.url);
     const parts = url.pathname.split('/').filter(Boolean);
@@ -17,6 +17,12 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 /**
  * GET /api/workflows/[id]/runs
+ *
+ * Checks scope mode to determine access:
+ * - none: deny access
+ * - own: only if workflow.ownerUserId === current user sub
+ * - ldd: only if workflow.ownerUserId === current user sub (workflows don't have LDD fields yet)
+ * - any: allow access
  */
 export async function GET(request) {
     try {
@@ -27,10 +33,29 @@ export async function GET(request) {
         const workflowId = extractWorkflowId(request);
         if (!workflowId)
             return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-        const canViewRuns = isAdmin(user.roles) ||
-            (await hasWorkflowAclAccess(db, workflowId, request, WORKFLOW_PERMISSIONS.WORKFLOWS_VIEW_RUNS));
-        if (!canViewRuns)
+        // Check workflow exists and user has read access
+        const [wf] = await db.select().from(workflows).where(eq(workflows.id, workflowId)).limit(1);
+        if (!wf)
             return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+        // Apply scope-based access check (explicit branching on none/own/ldd/any)
+        const mode = await resolveWorkflowCoreScopeMode(request, { entity: 'workflows', verb: 'read' });
+        if (mode === 'none') {
+            return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+        }
+        else if (mode === 'own') {
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+            }
+        }
+        else if (mode === 'ldd') {
+            // Workflows don't have LDD fields yet, so ldd behaves like own
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+            }
+        }
+        else if (mode === 'any') {
+            // Allow access to all workflows
+        }
         const { searchParams } = new URL(request.url);
         const limit = Math.max(1, Math.min(parseInt(searchParams.get('limit') || '50', 10), 200));
         const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
@@ -70,13 +95,29 @@ export async function POST(request) {
         const workflowId = extractWorkflowId(request);
         if (!workflowId)
             return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-        // If workflow doesn't exist, still avoid leakage by returning 404.
-        if (!(await workflowExists(db, workflowId))) {
+        // Check workflow exists and user has write access (run requires write permission)
+        const [wf] = await db.select().from(workflows).where(eq(workflows.id, workflowId)).limit(1);
+        if (!wf)
             return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
-        }
-        const canRun = isAdmin(user.roles) || (await hasWorkflowAclAccess(db, workflowId, request, WORKFLOW_PERMISSIONS.WORKFLOWS_RUN));
-        if (!canRun)
+        // Apply scope-based access check (explicit branching on none/own/ldd/any)
+        const mode = await resolveWorkflowCoreScopeMode(request, { entity: 'workflows', verb: 'write' });
+        if (mode === 'none') {
             return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+        }
+        else if (mode === 'own') {
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+            }
+        }
+        else if (mode === 'ldd') {
+            // Workflows don't have LDD fields yet, so ldd behaves like own
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+            }
+        }
+        else if (mode === 'any') {
+            // Allow access to all workflows
+        }
         const body = await request.json().catch(() => ({}));
         const input = body?.input && typeof body.input === 'object' ? body.input : null;
         const correlationId = typeof body?.correlationId === 'string' ? body.correlationId : null;

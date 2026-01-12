@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { desc, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
+import { workflowRuns, workflowTasks, workflows } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
-import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
+import { getWorkflowIdForRun } from './_workflow-access';
+import { resolveWorkflowCoreScopeMode } from '../lib/scope-mode';
 function extractRunId(request) {
     const url = new URL(request.url);
     const parts = url.pathname.split('/').filter(Boolean);
@@ -30,9 +31,29 @@ export async function GET(request) {
         const workflowId = await getWorkflowIdForRun(db, runId);
         if (!workflowId)
             return NextResponse.json({ error: 'Run not found' }, { status: 404 });
-        const canView = isAdmin(user.roles) || (await hasWorkflowAclAccess(db, workflowId, request, WORKFLOW_PERMISSIONS.WORKFLOWS_VIEW_RUNS));
-        if (!canView)
+        // Check workflow exists and user has read access
+        const [wf] = await db.select().from(workflows).where(eq(workflows.id, workflowId)).limit(1);
+        if (!wf)
             return NextResponse.json({ error: 'Run not found' }, { status: 404 });
+        // Apply scope-based access check (explicit branching on none/own/ldd/any)
+        const mode = await resolveWorkflowCoreScopeMode(request, { entity: 'workflows', verb: 'read' });
+        if (mode === 'none') {
+            return NextResponse.json({ error: 'Run not found' }, { status: 404 });
+        }
+        else if (mode === 'own') {
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Run not found' }, { status: 404 });
+            }
+        }
+        else if (mode === 'ldd') {
+            // Workflows don't have LDD fields yet, so ldd behaves like own
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Run not found' }, { status: 404 });
+            }
+        }
+        else if (mode === 'any') {
+            // Allow access to all workflows
+        }
         const [run] = await db.select().from(workflowRuns).where(eq(workflowRuns.id, runId)).limit(1);
         if (!run)
             return NextResponse.json({ error: 'Run not found' }, { status: 404 });

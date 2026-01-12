@@ -3,6 +3,12 @@ export declare const dynamic = "force-dynamic";
 export declare const runtime = "nodejs";
 /**
  * GET /api/workflows/[id]/runs
+ *
+ * Checks scope mode to determine access:
+ * - none: deny access
+ * - own: only if workflow.ownerUserId === current user sub
+ * - ldd: only if workflow.ownerUserId === current user sub (workflows don't have LDD fields yet)
+ * - any: allow access
  */
 export declare function GET(request: NextRequest): Promise<NextResponse<{
     error: string;

@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { getDb } from '@/lib/db';
-import { workflowVersions, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
+import { workflowVersions, workflows } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
-import { hasWorkflowAclAccess, isAdmin } from './_workflow-access';
+import { resolveWorkflowCoreScopeMode } from '../lib/scope-mode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 function extractWorkflowId(request) {
@@ -29,9 +29,29 @@ export async function POST(request) {
         const workflowId = extractWorkflowId(request);
         if (!workflowId)
             return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-        const canPublish = isAdmin(user.roles) || (await hasWorkflowAclAccess(db, workflowId, request, WORKFLOW_PERMISSIONS.WORKFLOWS_PUBLISH));
-        if (!canPublish)
+        // Check workflow exists and user has write access (publish requires write permission)
+        const [wf] = await db.select().from(workflows).where(eq(workflows.id, workflowId)).limit(1);
+        if (!wf)
+            return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+        // Apply scope-based access check (explicit branching on none/own/ldd/any)
+        const mode = await resolveWorkflowCoreScopeMode(request, { entity: 'workflows', verb: 'write' });
+        if (mode === 'none') {
             return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+        }
+        else if (mode === 'own') {
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+            }
+        }
+        else if (mode === 'ldd') {
+            // Workflows don't have LDD fields yet, so ldd behaves like own
+            if (wf.ownerUserId !== user.sub) {
+                return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+            }
+        }
+        else if (mode === 'any') {
+            // Allow access to all workflows
+        }
         const [draft] = await db
             .select()
             .from(workflowVersions)
