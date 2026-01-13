@@ -1,8 +1,7 @@
 'use client';
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useState } from 'react';
-import { useUi } from '@hit/ui-kit';
-import { useServerDataTableState } from '@hit/ui-kit/hooks/useServerDataTableState';
+import { useServerDataTableState, useUi } from '@hit/ui-kit';
 import { formatDateTime, formatRelativeTime } from '@hit/sdk';
 import { RefreshCw, Play, Clock, CheckCircle2, XCircle, Pause } from 'lucide-react';
 function getStatusIcon(status) {
