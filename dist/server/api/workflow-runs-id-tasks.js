@@ -5,7 +5,7 @@ import { workflowRunEvents, workflowRuns, workflowTasks, workflows, } from '@/li
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun } from './_workflow-access';
 import { resolveWorkflowCoreScopeMode } from '../lib/scope-mode';
-import { publishWorkflowEvent, publishWorkflowInboxEvent } from '../utils/publish-event';
+// Old events module integration removed (websocket-core is the new path).
 function toTargets(assignedTo) {
     const roles = Array.isArray(assignedTo?.roles) ? assignedTo.roles : [];
     const users = Array.isArray(assignedTo?.users) ? assignedTo.users : [];
@@ -187,8 +187,7 @@ export async function POST(request) {
             decidedAt: task.decidedAt || undefined,
             decidedByUserId: task.decidedByUserId || undefined,
         };
-        publishWorkflowEvent('workflows.task.created', evtPayload).catch(() => { });
-        publishWorkflowInboxEvent({ kind: 'task.created' }, { task: { id: task.id, runId, status: 'open', type, nodeId, assignedTo, prompt: task.prompt, createdAt: task.createdAt, decidedAt: task.decidedAt, decidedByUserId: task.decidedByUserId, decision: task.decision } }, toTargets(assignedTo)).catch(() => { });
+        // Realtime publish intentionally removed.
         return NextResponse.json({ task }, { status: 201 });
     }
     catch (error) {

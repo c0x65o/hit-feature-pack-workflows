@@ -4,7 +4,6 @@ import { getDb } from '@/lib/db';
 import { workflowRunEvents, workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
-import { publishWorkflowEvent, publishWorkflowInboxEvent } from '../utils/publish-event';
 function parseApplyAction(task) {
     const prompt = task?.prompt && typeof task.prompt === 'object' ? task.prompt : null;
     const apply = prompt && typeof prompt.applyAction === 'object' ? prompt.applyAction : null;
@@ -226,7 +225,7 @@ export async function actOnTask(request, opts) {
             ]
             : []),
     ]);
-    // Best-effort real-time update so inboxes refresh immediately
+    // Realtime publish intentionally removed.
     const updatePayload = {
         runId,
         taskId,
@@ -238,21 +237,7 @@ export async function actOnTask(request, opts) {
         comment: comment || undefined,
         assignedTo: task.assignedTo || undefined,
     };
-    publishWorkflowEvent('workflows.task.updated', updatePayload).catch(() => { });
-    publishWorkflowInboxEvent({ kind: 'task.updated' }, {
-        task: {
-            id: taskId,
-            runId,
-            status: newStatus,
-            type: task.type,
-            nodeId: task.nodeId,
-            assignedTo: task.assignedTo,
-            prompt: task.prompt,
-            decision: { action: newStatus, comment: comment || undefined },
-            decidedAt: decidedAt.toISOString(),
-            decidedByUserId: user.sub,
-        },
-    }, toTargets(task.assignedTo || {})).catch(() => { });
+    // (previous publishWorkflowEvent / publishWorkflowInboxEvent removed)
     return {
         ok: true,
         status: 200,

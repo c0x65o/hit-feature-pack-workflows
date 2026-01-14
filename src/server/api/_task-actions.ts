@@ -6,7 +6,7 @@ import { getDb } from '@/lib/db';
 import { workflowRunEvents, workflowRuns, workflowTasks, WORKFLOW_PERMISSIONS } from '@/lib/feature-pack-schemas';
 import { extractUserFromRequest } from '../auth';
 import { getWorkflowIdForRun, hasWorkflowAclAccess, isAdmin } from './_workflow-access';
-import { publishWorkflowEvent, publishWorkflowInboxEvent } from '../utils/publish-event';
+// Old events module integration removed (websocket-core is the new path).
 
 type ApplyAction = {
   kind?: 'api';
@@ -263,7 +263,7 @@ export async function actOnTask(
       : []),
   ]);
 
-  // Best-effort real-time update so inboxes refresh immediately
+  // Realtime publish intentionally removed.
   const updatePayload = {
     runId,
     taskId,
@@ -276,25 +276,7 @@ export async function actOnTask(
     assignedTo: (task as any).assignedTo || undefined,
   };
 
-  publishWorkflowEvent('workflows.task.updated', updatePayload).catch(() => {});
-  publishWorkflowInboxEvent(
-    { kind: 'task.updated' },
-    {
-      task: {
-        id: taskId,
-        runId,
-        status: newStatus,
-        type: (task as any).type,
-        nodeId: (task as any).nodeId,
-        assignedTo: (task as any).assignedTo,
-        prompt: (task as any).prompt,
-        decision: { action: newStatus, comment: comment || undefined },
-        decidedAt: decidedAt.toISOString(),
-        decidedByUserId: user.sub,
-      },
-    },
-    toTargets((task as any).assignedTo || {})
-  ).catch(() => {});
+  // (previous publishWorkflowEvent / publishWorkflowInboxEvent removed)
 
   return {
     ok: true,
