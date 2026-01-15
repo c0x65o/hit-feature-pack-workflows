@@ -154,7 +154,7 @@ permissions:
     #
     # Scope modes:
     # - none: deny all access for this verb/entity (hide pages + block APIs)
-    # - any: ignore scope (read everything)
+    # - all: ignore scope (read everything)
     # - own: only owned records (workflow.ownerUserId === current user sub)
     # - ldd: owner OR matching L/D/D (workflows don't have LDD fields yet, so ldd behaves like own)
     #
@@ -163,8 +163,8 @@ permissions:
       label: "Workflow-Core Read Scope = None"
       description: "Deny all workflow read access."
       default_enabled: false
-    - key: workflow-core.read.scope.any
-      label: "Workflow-Core Read Scope = Any"
+    - key: workflow-core.read.scope.all
+      label: "Workflow-Core Read Scope = All"
       description: "Read all workflows regardless of ownership."
       default_enabled: false
     - key: workflow-core.read.scope.own
@@ -176,8 +176,8 @@ permissions:
       label: "Workflow-Core Write Scope = None"
       description: "Deny all workflow write access."
       default_enabled: false
-    - key: workflow-core.write.scope.any
-      label: "Workflow-Core Write Scope = Any"
+    - key: workflow-core.write.scope.all
+      label: "Workflow-Core Write Scope = All"
       description: "Edit workflows regardless of ownership."
       default_enabled: false
     - key: workflow-core.write.scope.own
@@ -190,8 +190,8 @@ permissions:
       label: "Workflow-Core Workflows Read Scope = None"
       description: "Deny all workflow read access."
       default_enabled: false
-    - key: workflow-core.workflows.read.scope.any
-      label: "Workflow-Core Workflows Read Scope = Any"
+    - key: workflow-core.workflows.read.scope.all
+      label: "Workflow-Core Workflows Read Scope = All"
       description: "Read workflows regardless of ownership."
       default_enabled: false
     - key: workflow-core.workflows.read.scope.own
@@ -203,8 +203,8 @@ permissions:
       label: "Workflow-Core Workflows Write Scope = None"
       description: "Deny all workflow write access."
       default_enabled: false
-    - key: workflow-core.workflows.write.scope.any
-      label: "Workflow-Core Workflows Write Scope = Any"
+    - key: workflow-core.workflows.write.scope.all
+      label: "Workflow-Core Workflows Write Scope = All"
       description: "Edit workflows regardless of ownership."
       default_enabled: false
     - key: workflow-core.workflows.write.scope.own
