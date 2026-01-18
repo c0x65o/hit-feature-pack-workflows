@@ -51,7 +51,7 @@ export interface WorkflowRunEvent {
   createdAt: string;
 }
 
-export interface WorkflowTask {
+export interface WorkflowTaskView {
   id: string;
   runId: string;
   nodeId: string;
@@ -172,7 +172,7 @@ export function useAllWorkflowRuns(opts: { workflowId?: string; limit?: number; 
 
 export function useWorkflowRun(runId: string | null) {
   const [run, setRun] = useState<WorkflowRunDetail | null>(null);
-  const [tasks, setTasks] = useState<WorkflowTask[]>([]);
+  const [tasks, setTasks] = useState<WorkflowTaskView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -181,7 +181,7 @@ export function useWorkflowRun(runId: string | null) {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchWorkflowApi<{ run: WorkflowRunDetail; tasks?: WorkflowTask[] }>(`/runs/${runId}`);
+      const data = await fetchWorkflowApi<{ run: WorkflowRunDetail; tasks?: WorkflowTaskView[] }>(`/runs/${runId}`);
       setRun(data?.run ?? null);
       setTasks(Array.isArray(data?.tasks) ? data.tasks : []);
     } catch (err) {
@@ -233,7 +233,7 @@ export function useWorkflowRunEvents(runId: string | null) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function useWorkflowRunTasks(runId: string | null) {
-  const [tasks, setTasks] = useState<WorkflowTask[]>([]);
+  const [tasks, setTasks] = useState<WorkflowTaskView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -242,7 +242,7 @@ export function useWorkflowRunTasks(runId: string | null) {
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchWorkflowApi<{ items: WorkflowTask[] }>(`/runs/${runId}/tasks`);
+      const data = await fetchWorkflowApi<{ items: WorkflowTaskView[] }>(`/runs/${runId}/tasks`);
       setTasks(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load run tasks'));
@@ -287,8 +287,10 @@ export function useWorkflowRunTasks(runId: string | null) {
 // useMyWorkflowTasks - tasks assigned to current user (global inbox)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function useMyWorkflowTasks(opts: { includeResolved?: boolean } = {}) {
-  const [tasks, setTasks] = useState<WorkflowTask[]>([]);
+export function useMyWorkflowTasks(
+  opts: { includeResolved?: boolean; limit?: number; resolvedWithinHours?: number } = {}
+) {
+  const [tasks, setTasks] = useState<WorkflowTaskView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -298,14 +300,20 @@ export function useMyWorkflowTasks(opts: { includeResolved?: boolean } = {}) {
       setError(null);
       const params = new URLSearchParams();
       if (opts.includeResolved) params.set('includeResolved', 'true');
-      const data = await fetchWorkflowApi<{ items: WorkflowTask[] }>(`/tasks?${params.toString()}`);
+      if (typeof opts.limit === 'number' && Number.isFinite(opts.limit)) {
+        params.set('limit', String(Math.max(1, Math.floor(opts.limit))));
+      }
+      if (typeof opts.resolvedWithinHours === 'number' && Number.isFinite(opts.resolvedWithinHours)) {
+        params.set('resolvedWithinHours', String(Math.max(1, Math.floor(opts.resolvedWithinHours))));
+      }
+      const data = await fetchWorkflowApi<{ items: WorkflowTaskView[] }>(`/tasks?${params.toString()}`);
       setTasks(Array.isArray(data?.items) ? data.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to load tasks'));
     } finally {
       setLoading(false);
     }
-  }, [opts.includeResolved]);
+  }, [opts.includeResolved, opts.limit, opts.resolvedWithinHours]);
 
   useEffect(() => {
     refresh();

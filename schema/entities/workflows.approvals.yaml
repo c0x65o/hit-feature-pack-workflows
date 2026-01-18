@@ -1,0 +1,173 @@
+version: 1
+
+entities:
+  workflows.approval:
+    meta:
+      titleSingular: Approval
+      titlePlural: My Approvals
+      descriptionPlural: Tasks waiting for your approval
+      routes:
+        platforms: [web]
+        root: /hub
+        list: /hub/approvals
+        detail: /hub/approvals/{id}
+      breadcrumbs:
+        - { label: My Hub, href: /hub }
+        - { label: My Approvals, href: /hub/approvals }
+      actions:
+        allowCreate: false
+        allowEdit: false
+        allowDelete: false
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [user]
+        authz: { entity: workflows, verb: read, require_action: workflow-core.approvals.access, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [user]
+        authz: { entity: workflows, verb: read, require_action: workflow-core.approvals.access, show_pages: true }
+
+    api:
+      baseUrl: /api/workflows/tasks
+
+    list:
+      tableId: workflows.approvals.my
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: createdAt, sortOrder: desc }
+      sortWhitelist: [createdAt, status]
+      initialColumnVisibility:
+        title: true
+        status: true
+        workflowName: true
+        createdAt: true
+        decidedAt: false
+      columns:
+        - title
+        - status
+        - workflowName
+        - createdAt
+        - decidedAt
+      rowActions:
+        - kind: action
+          label: Approve
+          actionKey: workflow-core.approvals.approve
+        - kind: action
+          label: Deny
+          actionKey: workflow-core.approvals.deny
+
+    fields:
+      id: { type: text, label: ID }
+      runId: { type: text, label: Run ID }
+      workflowId: { type: text, label: Workflow ID }
+      workflowName: { type: text, label: Workflow, virtual: true }
+      status:
+        type: select
+        label: Status
+        options:
+          - { value: open, label: Open }
+          - { value: approved, label: Approved }
+          - { value: denied, label: Denied }
+          - { value: cancelled, label: Cancelled }
+          - { value: expired, label: Expired }
+      type: { type: text, label: Type }
+      title: { type: text, label: Title, virtual: true }
+      message: { type: text, label: Message, virtual: true }
+      createdAt: { type: datetime, label: Created }
+      decidedAt: { type: datetime, label: Decided }
+
+    detail:
+      summaryTitle: Approval Details
+      summaryFields:
+        - title
+        - message
+        - status
+        - workflowName
+        - createdAt
+        - decidedAt
+        - runId
+        - id
+
+  workflows.approvalAdmin:
+    meta:
+      titleSingular: Approval
+      titlePlural: Approvals
+      descriptionPlural: Workflow approvals (admin)
+      routes:
+        platforms: [web]
+        root: /workflows
+        list: /workflows/approvals
+        detail: /workflows/approvals/{id}
+      breadcrumbs:
+        - { label: Workflows, href: /workflows }
+        - { label: Approvals, href: /workflows/approvals }
+      actions:
+        allowCreate: false
+        allowEdit: false
+        allowDelete: false
+
+    security:
+      list:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: workflows, verb: read, require_action: workflow-core.workflows.read.scope.all, show_pages: true }
+      detail:
+        roles: []
+        default_roles_allow: [admin]
+        authz: { entity: workflows, verb: read, require_action: workflow-core.workflows.read.scope.all, show_pages: true }
+
+    api:
+      baseUrl: /api/workflows/tasks
+
+    list:
+      tableId: workflows.approvals.admin
+      uiStateVersion: 1
+      pageSize: 25
+      initialSort: { sortBy: createdAt, sortOrder: desc }
+      sortWhitelist: [createdAt, status, workflowName]
+      initialColumnVisibility:
+        title: true
+        status: true
+        workflowName: true
+        createdAt: true
+        decidedAt: true
+      columns:
+        - title
+        - status
+        - workflowName
+        - createdAt
+        - decidedAt
+
+    fields:
+      id: { type: text, label: ID }
+      runId: { type: text, label: Run ID }
+      workflowId: { type: text, label: Workflow ID }
+      workflowName: { type: text, label: Workflow, virtual: true }
+      status:
+        type: select
+        label: Status
+        options:
+          - { value: open, label: Open }
+          - { value: approved, label: Approved }
+          - { value: denied, label: Denied }
+          - { value: cancelled, label: Cancelled }
+          - { value: expired, label: Expired }
+      type: { type: text, label: Type }
+      title: { type: text, label: Title, virtual: true }
+      message: { type: text, label: Message, virtual: true }
+      createdAt: { type: datetime, label: Created }
+      decidedAt: { type: datetime, label: Decided }
+
+    detail:
+      summaryTitle: Approval Details
+      summaryFields:
+        - title
+        - message
+        - status
+        - workflowName
+        - createdAt
+        - decidedAt
+        - runId
+        - id

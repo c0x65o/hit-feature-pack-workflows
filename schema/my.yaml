@@ -1,0 +1,12 @@
+version: 1
+
+my:
+  items:
+    my.approvals:
+      label: My Approvals
+      description: Review approvals waiting for you
+      icon: Inbox
+      path: /hub/approvals
+      kind: workflowTasks
+      weight: 10
+      showWhen: authenticated

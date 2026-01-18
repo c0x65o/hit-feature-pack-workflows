@@ -1,0 +1,8 @@
+version: 1
+
+contrib:
+  actionHandlers:
+    - key: workflow-core.approvals.approve
+      description: "Approve a workflow task."
+    - key: workflow-core.approvals.deny
+      description: "Deny a workflow task."

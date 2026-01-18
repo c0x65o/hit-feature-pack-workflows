@@ -66,3 +66,8 @@ permissions:
       label: Create Workflow
       description: "Create a new workflow."
       default_enabled: false
+
+    - key: workflow-core.approvals.access
+      label: "Workflow-Core: My Approvals"
+      description: "Access your approval tasks."
+      default_enabled: true

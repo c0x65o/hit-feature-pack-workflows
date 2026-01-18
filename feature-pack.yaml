@@ -17,6 +17,101 @@ nav:
     weight: 900
     showWhen: authenticated
     roles: [admin]
+    children:
+      - label: Workflows
+        path: /workflows
+        icon: Workflow
+        weight: 10
+        roles: [admin]
+        showWhen: authenticated
+      - label: Runs
+        path: /workflows/runs
+        icon: ListChecks
+        weight: 20
+        roles: [admin]
+        showWhen: authenticated
+      - label: Approvals
+        path: /workflows/approvals
+        icon: Inbox
+        weight: 30
+        roles: [admin]
+        showWhen: authenticated
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROUTES
+# ─────────────────────────────────────────────────────────────────────────────
+routes:
+  - path: /workflows/approvals
+    page: EntityList
+    params: { entityKey: workflows.approvalAdmin }
+  - path: /hub/approvals
+    page: EntityList
+    params: { entityKey: workflows.approval }
+  - path: /workflows/runs
+    page: WorkflowRuns
+    default_roles_allow: [admin]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# API ROUTES
+# ─────────────────────────────────────────────────────────────────────────────
+api:
+  routes:
+    - path: /api/workflows
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows"
+      description: "Workflows list/create"
+    - path: /api/workflows/[id]
+      methods: [GET, PUT]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-id"
+      description: "Workflow detail/update"
+    - path: /api/workflows/[id]/publish
+      methods: [POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-id-publish"
+      description: "Publish a workflow version"
+    - path: /api/workflows/[id]/runs
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-id-runs"
+      description: "List or create workflow runs for a workflow"
+    - path: /api/workflows/[id]/acl
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-id-acl"
+      description: "Manage workflow ACL entries"
+    - path: /api/workflows/[id]/acl/[aclId]
+      methods: [DELETE]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-id-acl-id"
+      description: "Delete a workflow ACL entry"
+    - path: /api/workflows/runs
+      methods: [GET]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-runs"
+      description: "List workflow runs across all workflows"
+    - path: /api/workflows/runs/[runId]
+      methods: [GET]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflow-runs-id"
+      description: "Get workflow run detail"
+    - path: /api/workflows/runs/[runId]/events
+      methods: [GET]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflow-runs-id-events"
+      description: "Get workflow run events"
+    - path: /api/workflows/runs/[runId]/tasks
+      methods: [GET, POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflow-runs-id-tasks"
+      description: "Get or create workflow tasks for a run"
+    - path: /api/workflows/runs/[runId]/tasks/[taskId]/approve
+      methods: [POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflow-runs-id-tasks-id-approve"
+      description: "Approve a workflow task"
+    - path: /api/workflows/runs/[runId]/tasks/[taskId]/deny
+      methods: [POST]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflow-runs-id-tasks-id-deny"
+      description: "Deny a workflow task"
+    - path: /api/workflows/tasks
+      methods: [GET]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-tasks"
+      description: "List workflow tasks assigned to current user"
+    - path: /api/workflows/tasks/[id]
+      methods: [GET]
+      handler: "@hit/feature-pack-workflow-core/server/api/workflows-tasks-id"
+      description: "Get workflow task detail"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SCHEMA - Drizzle ORM table definitions

@@ -43,7 +43,7 @@ export interface WorkflowRunEvent {
     data?: Record<string, unknown> | null;
     createdAt: string;
 }
-export interface WorkflowTask {
+export interface WorkflowTaskView {
     id: string;
     runId: string;
     nodeId: string;
@@ -70,7 +70,7 @@ export declare function useAllWorkflowRuns(opts?: {
 };
 export declare function useWorkflowRun(runId: string | null): {
     run: WorkflowRunDetail | null;
-    tasks: WorkflowTask[];
+    tasks: WorkflowTaskView[];
     loading: boolean;
     error: Error | null;
     refresh: () => Promise<void>;
@@ -82,7 +82,7 @@ export declare function useWorkflowRunEvents(runId: string | null): {
     refresh: () => Promise<void>;
 };
 export declare function useWorkflowRunTasks(runId: string | null): {
-    tasks: WorkflowTask[];
+    tasks: WorkflowTaskView[];
     loading: boolean;
     error: Error | null;
     refresh: () => Promise<void>;
@@ -91,8 +91,10 @@ export declare function useWorkflowRunTasks(runId: string | null): {
 };
 export declare function useMyWorkflowTasks(opts?: {
     includeResolved?: boolean;
+    limit?: number;
+    resolvedWithinHours?: number;
 }): {
-    tasks: WorkflowTask[];
+    tasks: WorkflowTaskView[];
     loading: boolean;
     error: Error | null;
     refresh: () => Promise<void>;

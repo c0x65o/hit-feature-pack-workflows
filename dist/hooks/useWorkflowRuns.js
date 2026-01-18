@@ -207,6 +207,12 @@ export function useMyWorkflowTasks(opts = {}) {
             const params = new URLSearchParams();
             if (opts.includeResolved)
                 params.set('includeResolved', 'true');
+            if (typeof opts.limit === 'number' && Number.isFinite(opts.limit)) {
+                params.set('limit', String(Math.max(1, Math.floor(opts.limit))));
+            }
+            if (typeof opts.resolvedWithinHours === 'number' && Number.isFinite(opts.resolvedWithinHours)) {
+                params.set('resolvedWithinHours', String(Math.max(1, Math.floor(opts.resolvedWithinHours))));
+            }
             const data = await fetchWorkflowApi(`/tasks?${params.toString()}`);
             setTasks(Array.isArray(data?.items) ? data.items : []);
         }
@@ -216,7 +222,7 @@ export function useMyWorkflowTasks(opts = {}) {
         finally {
             setLoading(false);
         }
-    }, [opts.includeResolved]);
+    }, [opts.includeResolved, opts.limit, opts.resolvedWithinHours]);
     useEffect(() => {
         refresh();
     }, [refresh]);

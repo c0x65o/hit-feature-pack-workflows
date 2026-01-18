@@ -35,6 +35,7 @@ export {
   useMyWorkflowTasks,
   type WorkflowRunStatus,
   type WorkflowTaskStatus,
+  type WorkflowTaskView,
   type WorkflowRunSummary,
   type WorkflowRunDetail as WorkflowRunDetailData,
 } from './hooks/useWorkflowRuns';
