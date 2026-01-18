@@ -54,15 +54,22 @@ entities:
         - kind: action
           label: Approve
           actionKey: workflow-core.approvals.approve
+          platforms: [web]
         - kind: action
           label: Deny
           actionKey: workflow-core.approvals.deny
+          platforms: [web]
 
     fields:
       id: { type: text, label: ID }
       runId: { type: text, label: Run ID }
       workflowId: { type: text, label: Workflow ID }
-      workflowName: { type: text, label: Workflow, virtual: true }
+      workflowName:
+        type: text
+        label: Workflow
+        virtual: true
+        compute:
+          kind: runtime
       status:
         type: select
         label: Status
@@ -73,8 +80,18 @@ entities:
           - { value: cancelled, label: Cancelled }
           - { value: expired, label: Expired }
       type: { type: text, label: Type }
-      title: { type: text, label: Title, virtual: true }
-      message: { type: text, label: Message, virtual: true }
+      title:
+        type: text
+        label: Title
+        virtual: true
+        compute:
+          kind: runtime
+      message:
+        type: text
+        label: Message
+        virtual: true
+        compute:
+          kind: runtime
       createdAt: { type: datetime, label: Created }
       decidedAt: { type: datetime, label: Decided }
 
@@ -144,7 +161,12 @@ entities:
       id: { type: text, label: ID }
       runId: { type: text, label: Run ID }
       workflowId: { type: text, label: Workflow ID }
-      workflowName: { type: text, label: Workflow, virtual: true }
+      workflowName:
+        type: text
+        label: Workflow
+        virtual: true
+        compute:
+          kind: runtime
       status:
         type: select
         label: Status
@@ -155,8 +177,18 @@ entities:
           - { value: cancelled, label: Cancelled }
           - { value: expired, label: Expired }
       type: { type: text, label: Type }
-      title: { type: text, label: Title, virtual: true }
-      message: { type: text, label: Message, virtual: true }
+      title:
+        type: text
+        label: Title
+        virtual: true
+        compute:
+          kind: runtime
+      message:
+        type: text
+        label: Message
+        virtual: true
+        compute:
+          kind: runtime
       createdAt: { type: datetime, label: Created }
       decidedAt: { type: datetime, label: Decided }
 
