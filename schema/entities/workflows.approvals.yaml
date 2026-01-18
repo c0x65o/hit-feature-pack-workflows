@@ -12,7 +12,7 @@ entities:
         list: /hub/approvals
         detail: /hub/approvals/{id}
       breadcrumbs:
-        - { label: My Hub, href: /hub }
+        - { label: My Hub }
         - { label: My Approvals, href: /hub/approvals }
       actions:
         allowCreate: false

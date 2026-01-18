@@ -9,6 +9,13 @@ description: Workflow core feature pack
 # NAVIGATION - Sidebar/topbar items
 # ─────────────────────────────────────────────────────────────────────────────
 nav:
+  - id: my-approvals
+    label: My Approvals
+    icon: Inbox
+    path: /hub/approvals
+    group: hub
+    weight: 10
+    showWhen: authenticated
   - id: workflows
     label: Workflows
     path: /workflows
